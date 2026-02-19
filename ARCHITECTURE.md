@@ -1,4 +1,6 @@
-# Skynet Data Pipeline Architecture
+# Market Relationship Discovery Architecture
+
+![Architecture Diagram](./architecture-diagram.svg)
 
 ## Overview
 
@@ -26,9 +28,9 @@ A scalable data pipeline for market relationship discovery, ingesting data from 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           RAW LAYER (S3)                            │
 │                                                                     │
-│   s3://skynet-raw/edgar/2026/02/12/filings.json                    │
-│   s3://skynet-raw/fred/2026/02/12/series.json                      │
-│   s3://skynet-raw/gdelt/2026/02/12/events.json                     │
+│   s3://market-discovery-raw/edgar/2026/02/12/filings.json                    │
+│   s3://market-discovery-raw/fred/2026/02/12/series.json                      │
+│   s3://market-discovery-raw/gdelt/2026/02/12/events.json                     │
 │                                                                     │
 │   • Immutable, append-only                                          │
 │   • Partitioned by source/date                                      │

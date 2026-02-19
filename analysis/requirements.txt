@@ -1,0 +1,24 @@
+# Statistical analysis
+scipy>=1.11.0
+numpy>=1.24.0
+pandas>=2.0.0
+statsmodels>=0.14.0
+
+# Database
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.0
+
+# NLP / Sentiment
+transformers>=4.35.0
+torch>=2.0.0
+
+# HTTP client
+requests>=2.31.0
+httpx>=0.25.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# API server (for NestJS to call)
+fastapi>=0.104.0
+uvicorn>=0.24.0

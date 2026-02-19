@@ -13,6 +13,7 @@ import { RelationshipsModule } from './modules/relationships';
 import { AlertsModule } from './modules/alerts';
 import { HypothesesModule } from './modules/hypotheses';
 import { MarketDataModule } from './modules/market-data';
+import { IngestionModule } from './ingestion';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { MarketDataModule } from './modules/market-data';
     AlertsModule,
     HypothesesModule,
     MarketDataModule,
+    IngestionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
