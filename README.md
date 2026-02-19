@@ -1,12 +1,12 @@
-# Skynet
+# Market Relationship Discovery
 
-**Market Relationship Discovery** — backend intelligence layer.
+Backend intelligence layer for discovering cross-asset signal relationships.
 
 Ingests data from multiple sources (EDGAR, FRED, GDELT, Polymarket), normalizes to unified schema, runs statistical hypothesis testing, and serves discovered relationships via API.
 
 ## Architecture
 
-![Architecture Diagram](architecture-diagram.png)
+![Architecture Diagram](architecture-diagram.svg)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
