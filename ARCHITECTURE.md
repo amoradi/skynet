@@ -71,16 +71,22 @@ A scalable data pipeline for market relationship discovery, ingesting data from 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        ANALYSIS LAYER                               │
 │                                                                     │
-│   Python workers (ECS or Lambda)                                    │
-│   ├── Hypothesis runner                                             │
-│   │   • Pull event windows + market data                            │
-│   │   • Run statistical tests (scipy)                               │
-│   │   • Permutation testing, Bonferroni correction                  │
+│   Python Analysis Worker (FastAPI server @ :8001)                   │
+│   ├── Statistical Engine (scipy)                                    │
+│   │   • Correlation tests (Pearson, Spearman)                       │
+│   │   • Granger causality testing                                   │
+│   │   • Event studies with CAR analysis                             │
+│   │   • Lead/lag analysis, Bonferroni correction                    │
 │   │                                                                 │
-│   ├── Results → relationships table                                 │
-│   │   • hypothesis_id, p_value, hit_rate, edge, validated_at       │
+│   ├── Sentiment Analysis (FinBERT - FREE, no API costs)             │
+│   │   • Financial text sentiment classification                     │
+│   │   • Batch processing for news/SEC filings                       │
 │   │                                                                 │
-│   └── Triggered by: schedule (daily) or on-demand                   │
+│   ├── Hypothesis Worker                                             │
+│   │   • Fetches data from Postgres, runs tests                      │
+│   │   • Creates relationships for significant findings              │
+│   │                                                                 │
+│   └── NestJS calls via HTTP: /hypothesis/run, /sentiment/analyze    │
 └───────────────────────────────┼─────────────────────────────────────┘
                                 │
                                 ▼
@@ -158,6 +164,24 @@ A scalable data pipeline for market relationship discovery, ingesting data from 
 - Doesn't block API
 - Can scale independently
 
+### 6. Event-driven internal architecture
+- NestJS EventEmitter for loose coupling
+- Services emit events (event.created, relationship.discovered, etc.)
+- Other services subscribe without direct dependencies
+- Easy to add new reactions without modifying existing code
+
+### 7. FinBERT for sentiment (not paid LLM APIs)
+- FinBERT: free, open-source financial sentiment model
+- Runs locally in Python worker
+- No per-request API costs
+- LLMs cannot reliably do math/find numerical patterns
+
+### 8. LLM as optional orchestration layer (future)
+- Core discovery is scipy-based (statistical, not LLM)
+- LLM orchestration is an optional outer wrapper
+- Agent pattern: LLM decides which scipy tools to invoke
+- Not required for MVP - add when needed
+
 ---
 
 ## Unified Event Schema
@@ -195,16 +219,70 @@ CREATE INDEX idx_events_entity ON events (entity, timestamp DESC);
 
 ---
 
+## Internal Communication
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         NestJS Backend                              │
+│                                                                     │
+│   ┌──────────────┐    EventEmitter    ┌──────────────┐             │
+│   │ EventsModule │ ←───────────────→  │ AlertsModule │             │
+│   └──────┬───────┘                    └──────────────┘             │
+│          │                                   ↑                      │
+│          │ event.created                     │ alert.triggered      │
+│          ↓                                   │                      │
+│   ┌──────────────┐                    ┌──────────────┐             │
+│   │ Hypotheses   │ ←───────────────→  │ Relationships│             │
+│   │ Module       │ relationship.      │ Module       │             │
+│   └──────┬───────┘ discovered         └──────────────┘             │
+│          │                                                          │
+└──────────┼──────────────────────────────────────────────────────────┘
+           │
+           │ HTTP POST /hypothesis/run
+           ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Python Analysis Worker                           │
+│                         (FastAPI :8001)                             │
+│                                                                     │
+│   ┌────────────────┐    ┌────────────────┐    ┌────────────────┐   │
+│   │ StatisticalAna │    │ SentimentAnaly │    │ HypothesisWork │   │
+│   │ lyzer (scipy)  │    │ zer (FinBERT)  │    │ er             │   │
+│   └────────────────┘    └────────────────┘    └────────────────┘   │
+│                                                                     │
+│   Endpoints:                                                        │
+│   • POST /hypothesis/run      - Queue hypothesis test               │
+│   • POST /stats/correlation   - Run correlation test                │
+│   • POST /sentiment/analyze   - Analyze text sentiment              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Stack Summary
 
 | Component | Technology |
 |-----------|------------|
-| Ingestion | EventBridge + Lambda (or ECS for long-running) |
+| Ingestion | NestJS scheduled services (cron) |
 | Raw Storage | S3 (partitioned by source/date) |
 | Queue | SQS (transform triggers) |
 | Transform | Lambda or Step Functions |
 | Database | PostgreSQL + TimescaleDB |
 | Cache | Redis |
-| Analysis | Python (scipy, pandas) on ECS |
-| API | NestJS + TypeORM |
+| Statistical Analysis | Python (scipy, statsmodels, pandas) |
+| Sentiment Analysis | FinBERT (ProsusAI/finbert) - FREE |
+| Analysis API | FastAPI (Python) @ port 8001 |
+| API | NestJS + TypeORM + EventEmitter |
+| Internal Events | @nestjs/event-emitter |
+| LLM Orchestration | Optional future layer (Claude/GPT) |
 | Infra | AWS CDK or Terraform |
+
+---
+
+## Diagram Note
+
+The `architecture-diagram.png` shows the original high-level pipeline design. Key additions since then:
+- **FinBERT** added to Analysis Layer for free sentiment analysis
+- **FastAPI** server bridges NestJS ↔ Python analysis worker
+- **EventEmitter** for internal event-driven architecture
+- **LLM orchestration** marked as optional future layer (not core)
